@@ -1,0 +1,849 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SongForge</title>
+<meta name="description" content="Generate original songs with AI using the Suno API.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎵</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0b0b12;
+    --bg-2: #12121c;
+    --card: #171724;
+    --card-2: #1e1e2e;
+    --border: #2a2a3d;
+    --text: #ececf4;
+    --muted: #9a9ab0;
+    --accent: #8b5cf6;
+    --accent-2: #ec4899;
+    --ok: #22c55e;
+    --warn: #f59e0b;
+    --err: #ef4444;
+    --radius: 14px;
+    --grad: linear-gradient(135deg, var(--accent), var(--accent-2));
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    background: radial-gradient(1200px 600px at 10% -10%, #2a1650 0%, transparent 60%),
+                radial-gradient(900px 500px at 110% 10%, #3b0f2e 0%, transparent 55%), var(--bg);
+    background-attachment: fixed;
+    color: var(--text);
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  a { color: inherit; }
+
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 16px; }
+
+  header {
+    position: sticky; top: 0; z-index: 10;
+    backdrop-filter: blur(12px);
+    background: rgba(11, 11, 18, .72);
+    border-bottom: 1px solid var(--border);
+  }
+  .nav { display: flex; align-items: center; justify-content: space-between; height: 64px; gap: 12px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 20px; letter-spacing: -.02em; }
+  .logo { width: 34px; height: 34px; border-radius: 10px; background: var(--grad); display: grid; place-items: center; font-size: 18px; }
+  .nav-right { display: flex; align-items: center; gap: 8px; }
+  .pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 12px; border-radius: 999px; font-size: 13px; font-weight: 600;
+    background: var(--card); border: 1px solid var(--border); cursor: pointer;
+  }
+  .pill:hover { border-color: var(--accent); }
+  .icon-btn { background: var(--card); border: 1px solid var(--border); border-radius: 10px; width: 38px; height: 38px; cursor: pointer; display: grid; place-items: center; }
+  .icon-btn:hover { border-color: var(--accent); }
+
+  .hero { padding: 40px 0 24px; text-align: center; }
+  .hero h1 { font-size: clamp(28px, 5vw, 46px); line-height: 1.1; margin: 0 0 10px; letter-spacing: -.03em; }
+  .hero h1 span { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .hero p { color: var(--muted); margin: 0 auto; max-width: 560px; }
+
+  .layout { display: grid; grid-template-columns: minmax(0, 440px) minmax(0, 1fr); gap: 24px; padding-bottom: 60px; align-items: start; }
+  @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
+  .studio { position: sticky; top: 84px; }
+  @media (max-width: 900px) { .studio { position: static; } }
+
+  .tabs { display: grid; grid-template-columns: 1fr 1fr; background: var(--bg-2); border: 1px solid var(--border); border-radius: 12px; padding: 4px; margin-bottom: 18px; }
+  .tab { border: 0; background: transparent; padding: 9px; border-radius: 9px; cursor: pointer; font-weight: 600; color: var(--muted); }
+  .tab.active { background: var(--card-2); color: var(--text); box-shadow: 0 1px 0 rgba(255,255,255,.04) inset; }
+
+  .field { margin-bottom: 16px; }
+  .label-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; gap: 8px; }
+  label, .label { font-size: 13px; font-weight: 600; color: #d4d4e4; }
+  .count { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .count.over { color: var(--err); }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
+
+  input[type=text], input[type=password], textarea, select {
+    width: 100%; background: var(--bg-2); border: 1px solid var(--border); border-radius: 10px;
+    padding: 10px 12px; outline: none; transition: border-color .15s;
+  }
+  textarea { resize: vertical; min-height: 90px; }
+  #lyrics { min-height: 180px; font-size: 14px; }
+  input:focus, textarea:focus, select:focus { border-color: var(--accent); }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .chip { font-size: 12px; padding: 4px 10px; border-radius: 999px; background: var(--bg-2); border: 1px solid var(--border); cursor: pointer; color: var(--muted); }
+  .chip:hover { color: var(--text); border-color: var(--accent); }
+
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  .toggle { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px; background: var(--bg-2); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 16px; }
+  .toggle .t-title { font-weight: 600; font-size: 14px; }
+  .toggle .t-sub { font-size: 12px; color: var(--muted); }
+  .switch { position: relative; width: 44px; height: 24px; flex: none; }
+  .switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+  .slider { position: absolute; inset: 0; background: #3a3a52; border-radius: 999px; cursor: pointer; transition: .2s; }
+  .slider::before { content: ""; position: absolute; width: 18px; height: 18px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: .2s; }
+  .switch input:checked + .slider { background: var(--accent); }
+  .switch input:checked + .slider::before { transform: translateX(20px); }
+  .switch input:focus-visible + .slider { outline: 2px solid var(--accent-2); outline-offset: 2px; }
+
+  details.adv { border: 1px solid var(--border); border-radius: 10px; padding: 0 12px; margin-bottom: 16px; background: var(--bg-2); }
+  details.adv summary { cursor: pointer; padding: 12px 0; font-weight: 600; font-size: 14px; list-style: none; display: flex; justify-content: space-between; }
+  details.adv summary::-webkit-details-marker { display: none; }
+  details.adv summary::after { content: "▾"; color: var(--muted); }
+  details.adv[open] summary::after { content: "▴"; }
+  details.adv .inner { padding-bottom: 12px; }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+
+  .btn { border: 0; border-radius: 12px; padding: 12px 16px; font-weight: 700; cursor: pointer; transition: transform .05s, opacity .15s; }
+  .btn:active { transform: translateY(1px); }
+  .btn:disabled { opacity: .55; cursor: not-allowed; }
+  .btn-primary { width: 100%; background: var(--grad); color: #fff; font-size: 16px; padding: 14px; box-shadow: 0 8px 30px -10px rgba(139, 92, 246, .7); }
+  .btn-ghost { background: var(--card-2); border: 1px solid var(--border); font-size: 13px; padding: 8px 12px; font-weight: 600; }
+  .btn-ghost:hover { border-color: var(--accent); }
+  .btn-sm { font-size: 12px; padding: 6px 10px; border-radius: 8px; }
+
+  .lyrics-ai { display: flex; gap: 8px; margin-bottom: 8px; }
+  .lyrics-ai input { flex: 1; min-width: 0; }
+
+  .section-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; gap: 12px; flex-wrap: wrap; }
+  .section-head h2 { margin: 0; font-size: 20px; letter-spacing: -.02em; }
+  .muted { color: var(--muted); }
+
+  .job { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 16px; }
+  .job-top { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 10px; }
+  .job-title { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .badge { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 999px; text-transform: uppercase; letter-spacing: .04em; flex: none; }
+  .badge.run { background: rgba(139, 92, 246, .18); color: #c4b5fd; }
+  .badge.ok { background: rgba(34, 197, 94, .15); color: #86efac; }
+  .badge.err { background: rgba(239, 68, 68, .15); color: #fca5a5; }
+  .steps { display: flex; gap: 6px; }
+  .step { flex: 1; height: 6px; border-radius: 999px; background: var(--border); overflow: hidden; position: relative; }
+  .step.done { background: var(--grad); }
+  .step.active::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(236,72,153,.9), transparent); animation: shimmer 1.3s infinite; }
+  @keyframes shimmer { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+  .job-msg { font-size: 13px; color: var(--muted); margin-top: 8px; }
+  .job-msg.err { color: #fca5a5; }
+
+  .tracks { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+  .track { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; display: flex; flex-direction: column; }
+  .cover { position: relative; aspect-ratio: 1 / 1; background: var(--grad); display: grid; place-items: center; font-size: 48px; }
+  .cover img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .cover .dur { position: absolute; right: 8px; bottom: 8px; background: rgba(0,0,0,.65); font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 6px; }
+  .cover .live { position: absolute; left: 8px; top: 8px; background: rgba(0,0,0,.65); font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 6px; color: #fcd34d; }
+  .track-body { padding: 14px; display: flex; flex-direction: column; gap: 10px; flex: 1; }
+  .track h3 { margin: 0; font-size: 16px; line-height: 1.3; word-break: break-word; }
+  .tags { font-size: 12px; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  audio { width: 100%; height: 40px; }
+  .track-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: auto; }
+  .track-actions .btn { flex: 1 1 auto; white-space: nowrap; }
+  .track-actions .btn:last-child { flex: 0 0 auto; }
+  .track-lyrics { font-size: 13px; white-space: pre-wrap; color: #cfcfe0; background: var(--bg-2); border-radius: 8px; padding: 10px; max-height: 220px; overflow: auto; }
+
+  .empty { text-align: center; padding: 48px 20px; border: 1px dashed var(--border); border-radius: var(--radius); color: var(--muted); }
+  .empty .big { font-size: 40px; margin-bottom: 8px; }
+
+  dialog { background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px; width: min(460px, calc(100vw - 32px)); }
+  dialog::backdrop { background: rgba(0,0,0,.6); backdrop-filter: blur(3px); }
+  dialog h3 { margin: 0 0 6px; }
+  .dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+
+  .toast-wrap { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); display: flex; flex-direction: column; gap: 8px; z-index: 50; width: min(420px, calc(100vw - 32px)); }
+  .toast { background: var(--card-2); border: 1px solid var(--border); border-left: 4px solid var(--accent); padding: 10px 14px; border-radius: 10px; font-size: 14px; box-shadow: 0 10px 30px rgba(0,0,0,.4); animation: pop .2s ease-out; }
+  .toast.err { border-left-color: var(--err); }
+  .toast.ok { border-left-color: var(--ok); }
+  @keyframes pop { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+  .spinner { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,.35); border-top-color: #fff; border-radius: 50%; animation: spin .8s linear infinite; display: inline-block; vertical-align: -3px; margin-right: 8px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .key-banner { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 0 0 24px; padding: 14px 16px; border-radius: var(--radius); background: rgba(139, 92, 246, .12); border: 1px solid rgba(139, 92, 246, .45); font-size: 14px; }
+  .icon-btn.needs-key { border-color: var(--accent-2); box-shadow: 0 0 0 3px rgba(236, 72, 153, .25); }
+  .hidden { display: none !important; }
+  footer { text-align: center; color: var(--muted); font-size: 12px; padding: 0 0 32px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap nav">
+    <div class="brand"><div class="logo">🎵</div> SongForge</div>
+    <div class="nav-right">
+      <button class="pill" id="creditsBtn" title="Remaining Suno credits — click to refresh">💎 <span id="credits">—</span> credits</button>
+      <button class="icon-btn" id="settingsBtn" title="Settings" aria-label="Settings">⚙️</button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="hero">
+    <h1>Turn an idea into a <span>full song</span></h1>
+    <p>Describe a vibe, or write your own lyrics and style. Each generation creates two unique tracks you can play, download and keep.</p>
+  </section>
+
+  <div class="key-banner hidden" id="keyBanner">
+    <div><b>🔑 Add your Suno API key to get started.</b> <span class="muted">It stays in your browser — nothing is stored on a server.</span></div>
+    <button class="btn btn-ghost" id="keyBannerBtn" type="button" style="border-color:var(--accent)">Add API key</button>
+  </div>
+
+  <div class="layout">
+    <!-- STUDIO -->
+    <section class="card studio" aria-label="Create">
+      <div class="tabs" role="tablist">
+        <button class="tab active" role="tab" data-mode="simple" aria-selected="true">✨ Simple</button>
+        <button class="tab" role="tab" data-mode="custom" aria-selected="false">🎛️ Custom</button>
+      </div>
+
+      <form id="form" novalidate>
+        <!-- Simple mode -->
+        <div id="simpleFields">
+          <div class="field">
+            <div class="label-row"><label for="description">Song description</label><span class="count" data-for="description"></span></div>
+            <textarea id="description" maxlength="500" placeholder="An upbeat summer pop song about road-tripping with friends, catchy chorus, female vocals"></textarea>
+            <div class="chips" id="ideaChips"></div>
+          </div>
+        </div>
+
+        <!-- Custom mode -->
+        <div id="customFields" class="hidden">
+          <div class="field">
+            <div class="label-row"><label for="title">Title</label><span class="count" data-for="title"></span></div>
+            <input type="text" id="title" maxlength="80" placeholder="Midnight Drive">
+          </div>
+          <div class="field">
+            <div class="label-row"><label for="style">Style of music</label><span class="count" data-for="style"></span></div>
+            <textarea id="style" maxlength="1000" style="min-height:70px" placeholder="synthwave, 80s, dreamy female vocals, driving bass"></textarea>
+            <div class="chips" id="styleChips"></div>
+          </div>
+          <div class="field" id="lyricsField">
+            <div class="label-row"><label for="lyrics">Lyrics</label><span class="count" data-for="lyrics"></span></div>
+            <div class="lyrics-ai">
+              <input type="text" id="lyricsIdea" maxlength="200" placeholder="Lyrics idea, e.g. heartbreak on a rainy night">
+              <button type="button" class="btn btn-ghost" id="lyricsBtn">✍️ Write</button>
+            </div>
+            <textarea id="lyrics" maxlength="5000" placeholder="[Verse]&#10;City lights are fading...&#10;&#10;[Chorus]&#10;..."></textarea>
+            <div class="hint">Use tags like [Verse], [Chorus], [Bridge] to shape the song. Or let AI write them above.</div>
+          </div>
+        </div>
+
+        <div class="toggle">
+          <div>
+            <div class="t-title">Instrumental</div>
+            <div class="t-sub">No vocals — music only</div>
+          </div>
+          <label class="switch" aria-label="Instrumental"><input type="checkbox" id="instrumental"><span class="slider"></span></label>
+        </div>
+
+        <details class="adv">
+          <summary>Advanced options</summary>
+          <div class="inner">
+            <div class="field">
+              <label for="model">Model</label>
+              <select id="model">
+                <option value="V6" selected>V6 — latest, best quality</option>
+                <option value="V6_WILD">V6 Wild — more experimental</option>
+                <option value="V6_MINI">V6 Mini — faster</option>
+                <option value="V5_5">V5.5 (legacy)</option>
+                <option value="V5">V5 (legacy)</option>
+                <option value="V4_5PLUS">V4.5+ (legacy)</option>
+                <option value="V4_5">V4.5 (legacy)</option>
+              </select>
+            </div>
+            <div class="custom-only hidden">
+              <div class="row">
+                <div class="field">
+                  <label for="vocalGender">Vocal gender</label>
+                  <select id="vocalGender">
+                    <option value="">Any</option>
+                    <option value="f">Female</option>
+                    <option value="m">Male</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="negativeTags">Exclude styles</label>
+                  <input type="text" id="negativeTags" maxlength="200" placeholder="heavy metal, screaming">
+                </div>
+              </div>
+              <div class="field">
+                <div class="label-row"><label for="styleWeight">Style adherence</label><span class="count" id="styleWeightVal">default</span></div>
+                <input type="range" id="styleWeight" min="0" max="1" step="0.05" value="0.65">
+              </div>
+              <div class="field">
+                <div class="label-row"><label for="weirdness">Weirdness</label><span class="count" id="weirdnessVal">default</span></div>
+                <input type="range" id="weirdness" min="0" max="1" step="0.05" value="0.5">
+              </div>
+              <button type="button" class="btn btn-ghost btn-sm" id="resetSliders">Reset to defaults</button>
+            </div>
+          </div>
+        </details>
+
+        <button type="submit" class="btn btn-primary" id="generateBtn">🎶 Generate song</button>
+        <div class="hint" style="text-align:center">Generation usually takes 1–3 minutes. You can start listening before it finishes.</div>
+      </form>
+    </section>
+
+    <!-- OUTPUT -->
+    <section aria-label="Your songs">
+      <div id="jobs"></div>
+      <div class="section-head">
+        <h2>Your library <span class="muted" id="libCount"></span></h2>
+        <button class="btn btn-ghost btn-sm" id="clearLib">Clear library</button>
+      </div>
+      <div class="tracks" id="tracks"></div>
+      <div class="empty" id="empty">
+        <div class="big">🎧</div>
+        <div>No songs yet. Describe one on the left and hit <b>Generate</b>.</div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<footer class="wrap">Powered by the Suno API · Audio links are hosted by the provider and may expire — download songs you want to keep.</footer>
+
+<dialog id="settings">
+  <h3>Settings</h3>
+  <p class="muted" style="margin:0 0 14px;font-size:14px">Paste your Suno API key to generate music. Get one at <a href="https://sunoapi.org/api-key" target="_blank" rel="noopener">sunoapi.org</a>. Your key is saved only in this browser and sent only to the Suno API.</p>
+  <div class="field">
+    <label for="apiKey">Suno API key</label>
+    <div style="display:flex;gap:8px">
+      <input type="password" id="apiKey" placeholder="Paste your API key" autocomplete="off" spellcheck="false">
+      <button class="btn btn-ghost" id="toggleKey" type="button">Show</button>
+    </div>
+    <div class="hint">Clear the field and save to remove the key from this browser.</div>
+  </div>
+  <div class="dialog-actions">
+    <button class="btn btn-ghost" id="settingsCancel">Cancel</button>
+    <button class="btn btn-ghost" id="settingsSave" style="border-color:var(--accent)">Save</button>
+  </div>
+</dialog>
+
+<div class="toast-wrap" id="toasts" aria-live="polite"></div>
+
+<script>
+(() => {
+  "use strict";
+
+  // ---------- storage (always guarded) ----------
+  const store = {
+    get(key, fallback) { try { const v = localStorage.getItem(key); return v == null ? fallback : JSON.parse(v); } catch { return fallback; } },
+    set(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch {} },
+  };
+  const LIB_KEY = "songforge.library.v1";
+  const JOBS_KEY = "songforge.jobs.v1";
+  const KEY_KEY = "songforge.apikey";
+
+  // ---------- helpers ----------
+  const $ = (s) => document.querySelector(s);
+  const el = (tag, attrs = {}, ...children) => {
+    const n = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) {
+      if (k === "class") n.className = v;
+      else if (k === "text") n.textContent = v;
+      else if (k.startsWith("on")) n.addEventListener(k.slice(2), v);
+      else if (v !== undefined && v !== null && v !== false) n.setAttribute(k, v);
+    }
+    for (const c of children) if (c != null) n.append(c);
+    return n;
+  };
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const fmtDur = (s) => { s = Math.round(Number(s) || 0); return s ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}` : ""; };
+  const safeUrl = (u) => { try { const x = new URL(u); return x.protocol === "https:" || x.protocol === "http:" ? x.href : null; } catch { return null; } };
+
+  function toast(msg, type = "") {
+    const t = el("div", { class: `toast ${type}`, text: msg });
+    $("#toasts").append(t);
+    setTimeout(() => t.remove(), type === "err" ? 7000 : 4000);
+  }
+
+  // Direct calls to the Suno API (https://docs.sunoapi.org) with the user's own key.
+  const SUNO_BASE = "https://api.sunoapi.org/api/v1";
+  // Suno requires a callback URL; this app polls for results instead, so any reachable URL works.
+  const CALLBACK_URL = /^https?:$/.test(location.protocol) ? `${location.origin}/suno-callback` : "https://example.com/suno-callback";
+  const getKey = () => String(store.get(KEY_KEY, "") || "").trim();
+
+  async function api(path, { method = "GET", body } = {}) {
+    const key = getKey();
+    if (!key) {
+      openSettings();
+      throw new Error("Add your Suno API key to start generating.");
+    }
+    if (body && method === "POST") body = { ...body, callBackUrl: CALLBACK_URL };
+    let res;
+    try {
+      res = await fetch(`${SUNO_BASE}/${path}`, {
+        method,
+        headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+        body: body ? JSON.stringify(body) : undefined,
+      });
+    } catch {
+      throw new Error("Couldn't reach the Suno API — check your connection and try again.");
+    }
+    let data = null;
+    try { data = await res.json(); } catch {}
+    if (!res.ok || !data || (data.code != null && Number(data.code) !== 200)) {
+      const msg = data?.msg || `Request failed (HTTP ${res.status})`;
+      throw new Error(friendlyError(Number(data?.code || res.status), msg));
+    }
+    return data;
+  }
+
+  function friendlyError(code, msg) {
+    const map = {
+      401: "Invalid API key. Update it in Settings (⚙️).",
+      404: "Suno API endpoint not found.",
+      405: "Request method not allowed.",
+      413: "Your prompt or lyrics are too long.",
+      429: "Out of credits — top up your Suno API account.",
+      430: "Too many requests — please wait a moment and try again.",
+      455: "Suno is under maintenance. Try again shortly.",
+      500: "The Suno service had an error. Please try again.",
+    };
+    return map[code] ? `${map[code]}${msg && !map[code].includes(msg) ? ` (${msg})` : ""}` : msg;
+  }
+
+  // ---------- credits ----------
+  async function refreshCredits() {
+    const span = $("#credits");
+    if (!getKey()) { span.textContent = "—"; return; }
+    span.textContent = "…";
+    try {
+      const d = await api("generate/credit");
+      const n = typeof d.data === "object" ? (d.data?.credits ?? d.data?.remaining ?? "?") : d.data;
+      span.textContent = typeof n === "number" ? n.toLocaleString() : String(n ?? "?");
+    } catch (e) {
+      span.textContent = "—";
+      console.warn("Credits:", e.message);
+    }
+  }
+  $("#creditsBtn").addEventListener("click", refreshCredits);
+
+  // ---------- settings ----------
+  const dlg = $("#settings");
+  function openSettings() {
+    if (dlg.open) return;
+    $("#apiKey").value = getKey();
+    dlg.showModal();
+    $("#apiKey").focus();
+  }
+  function syncKeyUi() {
+    const has = !!getKey();
+    $("#keyBanner").classList.toggle("hidden", has);
+    $("#settingsBtn").classList.toggle("needs-key", !has);
+  }
+  $("#settingsBtn").addEventListener("click", openSettings);
+  $("#keyBannerBtn").addEventListener("click", openSettings);
+  $("#settingsCancel").addEventListener("click", (e) => { e.preventDefault(); dlg.close(); });
+  $("#toggleKey").addEventListener("click", (e) => {
+    e.preventDefault();
+    const f = $("#apiKey");
+    f.type = f.type === "password" ? "text" : "password";
+    e.currentTarget.textContent = f.type === "password" ? "Show" : "Hide";
+  });
+  $("#settingsSave").addEventListener("click", (e) => {
+    e.preventDefault();
+    store.set(KEY_KEY, $("#apiKey").value.trim());
+    dlg.close();
+    syncKeyUi();
+    toast(getKey() ? "API key saved in this browser" : "API key removed", "ok");
+    refreshCredits();
+  });
+
+  // ---------- mode ----------
+  let mode = "simple";
+  function setMode(m) {
+    mode = m;
+    document.querySelectorAll(".tab").forEach((t) => {
+      const on = t.dataset.mode === m;
+      t.classList.toggle("active", on);
+      t.setAttribute("aria-selected", on);
+    });
+    $("#simpleFields").classList.toggle("hidden", m !== "simple");
+    $("#customFields").classList.toggle("hidden", m !== "custom");
+    document.querySelectorAll(".custom-only").forEach((n) => n.classList.toggle("hidden", m !== "custom"));
+    syncInstrumental();
+  }
+  document.querySelectorAll(".tab").forEach((t) => t.addEventListener("click", () => setMode(t.dataset.mode)));
+
+  function syncInstrumental() {
+    const inst = $("#instrumental").checked;
+    $("#lyricsField").classList.toggle("hidden", inst);
+    $("#vocalGender").disabled = inst;
+  }
+  $("#instrumental").addEventListener("change", syncInstrumental);
+
+  // ---------- character counters ----------
+  function updateCount(id) {
+    const input = document.getElementById(id);
+    const c = document.querySelector(`.count[data-for="${id}"]`);
+    if (!input || !c) return;
+    const max = Number(input.getAttribute("maxlength"));
+    c.textContent = `${input.value.length} / ${max}`;
+    c.classList.toggle("over", input.value.length > max);
+  }
+  ["description", "title", "style", "lyrics"].forEach((id) => {
+    document.getElementById(id).addEventListener("input", () => updateCount(id));
+    updateCount(id);
+  });
+
+  // ---------- chips ----------
+  const ideas = [
+    "Lo-fi hip hop beat for studying on a rainy afternoon",
+    "Epic cinematic orchestral anthem for a hero's return",
+    "Upbeat 80s synth-pop song about falling in love at the arcade",
+    "Acoustic country ballad about a small hometown",
+    "High-energy EDM festival banger with a massive drop",
+    "Smooth jazz with saxophone for a late-night lounge",
+  ];
+  const styles = ["pop", "hip hop", "lo-fi", "rock", "EDM", "R&B", "country", "jazz", "synthwave", "afrobeats", "cinematic", "acoustic", "k-pop", "reggaeton", "female vocals", "male vocals", "upbeat", "melancholic"];
+  ideas.forEach((i) => $("#ideaChips").append(el("button", {
+    type: "button", class: "chip", text: i.split(" ").slice(0, 3).join(" ") + "…", title: i,
+    onclick: () => { $("#description").value = i; updateCount("description"); },
+  })));
+  styles.forEach((s) => $("#styleChips").append(el("button", {
+    type: "button", class: "chip", text: `+ ${s}`,
+    onclick: () => {
+      const f = $("#style");
+      const parts = f.value.split(",").map((x) => x.trim()).filter(Boolean);
+      if (!parts.map((p) => p.toLowerCase()).includes(s.toLowerCase())) parts.push(s);
+      f.value = parts.join(", ");
+      updateCount("style");
+    },
+  })));
+
+  // ---------- sliders (only sent if the user changes them) ----------
+  const sliderState = { styleWeight: false, weirdness: false };
+  function bindSlider(id, labelId) {
+    const r = document.getElementById(id);
+    r.addEventListener("input", () => { sliderState[id] = true; document.getElementById(labelId).textContent = Number(r.value).toFixed(2); });
+  }
+  bindSlider("styleWeight", "styleWeightVal");
+  bindSlider("weirdness", "weirdnessVal");
+  $("#resetSliders").addEventListener("click", () => {
+    $("#styleWeight").value = 0.65; $("#weirdness").value = 0.5;
+    sliderState.styleWeight = sliderState.weirdness = false;
+    $("#styleWeightVal").textContent = $("#weirdnessVal").textContent = "default";
+  });
+
+  // ---------- AI lyrics ----------
+  $("#lyricsBtn").addEventListener("click", async () => {
+    const idea = $("#lyricsIdea").value.trim() || $("#title").value.trim() || $("#style").value.trim();
+    if (!idea) { toast("Type a lyrics idea first (e.g. “summer love on the beach”)", "err"); $("#lyricsIdea").focus(); return; }
+    const btn = $("#lyricsBtn");
+    const original = btn.textContent;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Writing';
+    try {
+      const d = await api("lyrics", { method: "POST", body: { prompt: idea.slice(0, 200) } });
+      const taskId = d.data?.taskId;
+      if (!taskId) throw new Error("No task ID returned for lyrics.");
+      const started = Date.now();
+      while (Date.now() - started < 3 * 60 * 1000) {
+        await sleep(3000);
+        const s = await api(`lyrics/record-info?taskId=${encodeURIComponent(taskId)}`);
+        const status = s.data?.status;
+        if (status === "SUCCESS") {
+          const list = s.data?.response?.data || s.data?.response?.lyricsData || [];
+          const pick = list.find((x) => x.text && x.status !== "failed") || list[0];
+          if (!pick?.text) throw new Error("Lyrics came back empty — try a different idea.");
+          $("#lyrics").value = pick.text;
+          if (!$("#title").value.trim() && pick.title) $("#title").value = pick.title.slice(0, 80);
+          updateCount("lyrics"); updateCount("title");
+          toast("Lyrics ready — edit them however you like", "ok");
+          refreshCredits();
+          return;
+        }
+        if (status && status !== "PENDING") throw new Error(s.data?.errorMessage || `Lyrics failed (${status.replaceAll("_", " ").toLowerCase()})`);
+      }
+      throw new Error("Lyrics are taking too long — please try again.");
+    } catch (e) {
+      toast(e.message, "err");
+    } finally {
+      btn.disabled = false;
+      btn.textContent = original;
+    }
+  });
+
+  // ---------- library ----------
+  let library = store.get(LIB_KEY, []);
+  const saveLib = () => store.set(LIB_KEY, library.slice(0, 200));
+
+  function normalizeTrack(t, meta) {
+    return {
+      id: t.id || t.audioId || `${meta.taskId}-${Math.random().toString(36).slice(2)}`,
+      taskId: meta.taskId,
+      title: t.title || meta.title || "Untitled",
+      tags: t.tags || meta.style || "",
+      prompt: t.prompt || "",
+      imageUrl: safeUrl(t.imageUrl || t.image_url || t.sourceImageUrl),
+      audioUrl: safeUrl(t.audioUrl || t.audio_url || t.sourceAudioUrl),
+      streamAudioUrl: safeUrl(t.streamAudioUrl || t.stream_audio_url || t.sourceStreamAudioUrl),
+      duration: t.duration || 0,
+      model: t.modelName || meta.model,
+      createdAt: Date.now(),
+    };
+  }
+
+  function upsertTracks(tracks) {
+    for (const t of tracks) {
+      const i = library.findIndex((x) => x.id === t.id);
+      if (i >= 0) library[i] = { ...library[i], ...Object.fromEntries(Object.entries(t).filter(([, v]) => v)), createdAt: library[i].createdAt };
+      else library.unshift(t);
+    }
+    saveLib();
+    renderLibrary();
+  }
+
+  function renderLibrary() {
+    const wrap = $("#tracks");
+    // Preserve currently playing audio across re-renders
+    const playing = [...wrap.querySelectorAll("audio")].find((a) => !a.paused);
+    const playingId = playing?.closest(".track")?.dataset.id;
+    if (playingId) {
+      // Update everything except the playing card so playback isn't interrupted
+      const existing = new Map([...wrap.children].map((n) => [n.dataset.id, n]));
+      const frag = document.createDocumentFragment();
+      for (const t of library) frag.append(t.id === playingId ? existing.get(t.id) : trackCard(t));
+      wrap.replaceChildren(frag);
+    } else {
+      wrap.replaceChildren(...library.map(trackCard));
+    }
+    $("#empty").classList.toggle("hidden", library.length > 0);
+    $("#clearLib").classList.toggle("hidden", library.length === 0);
+    $("#libCount").textContent = library.length ? `(${library.length})` : "";
+  }
+
+  function trackCard(t) {
+    const src = t.audioUrl || t.streamAudioUrl;
+    const isStream = !t.audioUrl && !!t.streamAudioUrl;
+    const cover = el("div", { class: "cover" }, "🎵");
+    if (t.imageUrl) {
+      const img = el("img", { src: t.imageUrl, alt: "", loading: "lazy" });
+      img.addEventListener("error", () => img.remove());
+      cover.append(img);
+    }
+    if (t.duration) cover.append(el("span", { class: "dur", text: fmtDur(t.duration) }));
+    if (isStream) cover.append(el("span", { class: "live", text: "● STREAMING PREVIEW" }));
+
+    const audio = src ? el("audio", { controls: "", preload: "none", src }) : el("div", { class: "hint", text: "Audio is still rendering…" });
+    if (src) audio.addEventListener("play", () => document.querySelectorAll("audio").forEach((a) => { if (a !== audio) a.pause(); }));
+
+    const lyricsBox = el("div", { class: "track-lyrics hidden", text: t.prompt || "" });
+    const actions = el("div", { class: "track-actions" });
+    if (t.audioUrl) actions.append(el("button", { class: "btn btn-ghost btn-sm", text: "⬇ Download", onclick: () => download(t) }));
+    if (t.prompt && !/^\s*$/.test(t.prompt)) actions.append(el("button", {
+      class: "btn btn-ghost btn-sm", text: "📝 Lyrics",
+      onclick: (e) => { lyricsBox.classList.toggle("hidden"); e.currentTarget.textContent = lyricsBox.classList.contains("hidden") ? "📝 Lyrics" : "Hide lyrics"; },
+    }));
+    actions.append(el("button", { class: "btn btn-ghost btn-sm", text: "🔁 Reuse", title: "Copy this song's style into Custom mode", onclick: () => reuse(t) }));
+    actions.append(el("button", {
+      class: "btn btn-ghost btn-sm", text: "🗑", title: "Remove from library", "aria-label": "Remove",
+      onclick: () => { library = library.filter((x) => x.id !== t.id); saveLib(); renderLibrary(); },
+    }));
+
+    return el("article", { class: "track", "data-id": t.id },
+      cover,
+      el("div", { class: "track-body" },
+        el("h3", { text: t.title }),
+        t.tags ? el("div", { class: "tags", text: t.tags, title: t.tags }) : null,
+        audio,
+        lyricsBox,
+        actions,
+      ),
+    );
+  }
+
+  async function download(t) {
+    const name = `${(t.title || "song").replace(/[^\w\- ]+/g, "").trim() || "song"}.mp3`;
+    try {
+      const res = await fetch(t.audioUrl);
+      if (!res.ok) throw new Error();
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = el("a", { href: url, download: name });
+      document.body.append(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+    } catch {
+      // Cross-origin fallback: open the file so the user can save it
+      window.open(t.audioUrl, "_blank", "noopener");
+    }
+  }
+
+  function reuse(t) {
+    setMode("custom");
+    $("#title").value = (t.title || "").slice(0, 80);
+    $("#style").value = (t.tags || "").slice(0, 1000);
+    if (t.prompt) $("#lyrics").value = t.prompt.slice(0, 5000);
+    ["title", "style", "lyrics"].forEach(updateCount);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    toast("Loaded into Custom mode — tweak and generate", "ok");
+  }
+
+  $("#clearLib").addEventListener("click", () => {
+    if (!confirm("Remove all songs from your library? (This only clears this browser.)")) return;
+    library = []; saveLib(); renderLibrary();
+  });
+
+  // ---------- generation jobs ----------
+  let jobs = store.get(JOBS_KEY, []);
+  const saveJobs = () => store.set(JOBS_KEY, jobs);
+  const STAGES = ["PENDING", "TEXT_SUCCESS", "FIRST_SUCCESS", "SUCCESS"];
+  const STAGE_TEXT = {
+    SUBMITTED: "Sending your request…",
+    PENDING: "Queued — composing your song…",
+    TEXT_SUCCESS: "Lyrics & structure ready — rendering audio…",
+    FIRST_SUCCESS: "First track ready! Finishing the second…",
+    SUCCESS: "Done! Your songs are in the library below.",
+  };
+  const ERROR_TEXT = {
+    CREATE_TASK_FAILED: "Couldn't create the task.",
+    GENERATE_AUDIO_FAILED: "Audio generation failed. Try adjusting your prompt.",
+    CALLBACK_EXCEPTION: "Generation finished with a callback error.",
+    SENSITIVE_WORD_ERROR: "Your prompt contains restricted words or artist names. Please rephrase.",
+  };
+
+  function jobCard(job) {
+    let node = document.getElementById(`job-${job.taskId}`);
+    if (!node) {
+      node = el("div", { class: "job", id: `job-${job.taskId}` });
+      $("#jobs").prepend(node);
+    }
+    const stageIdx = STAGES.indexOf(job.status);
+    const failed = !!job.error;
+    const done = job.status === "SUCCESS";
+    const steps = el("div", { class: "steps" }, ...STAGES.map((_, i) =>
+      el("div", { class: `step ${i <= stageIdx || done ? "done" : ""} ${!failed && !done && i === stageIdx + 1 ? "active" : ""}` })));
+    const badge = el("span", { class: `badge ${failed ? "err" : done ? "ok" : "run"}`, text: failed ? "Failed" : done ? "Complete" : "Generating" });
+    const top = el("div", { class: "job-top" }, el("div", { class: "job-title", text: `🎼 ${job.label}` }), badge);
+    const msg = el("div", { class: `job-msg ${failed ? "err" : ""}`, text: failed ? job.error : (STAGE_TEXT[job.status] || STAGE_TEXT.PENDING) });
+    const kids = [top, steps, msg];
+    if (failed || done) kids.push(el("div", { style: "margin-top:10px" }, el("button", {
+      class: "btn btn-ghost btn-sm", text: "Dismiss",
+      onclick: () => { node.remove(); jobs = jobs.filter((j) => j.taskId !== job.taskId); saveJobs(); },
+    })));
+    node.replaceChildren(...kids);
+    if (done) setTimeout(() => { node.remove(); jobs = jobs.filter((j) => j.taskId !== job.taskId); saveJobs(); }, 8000);
+  }
+
+  async function pollJob(job) {
+    const started = job.startedAt || Date.now();
+    let delay = 4000;
+    while (Date.now() - started < 15 * 60 * 1000) {
+      await sleep(delay);
+      delay = Math.min(delay + 1000, 8000);
+      let d;
+      try {
+        d = await api(`generate/record-info?taskId=${encodeURIComponent(job.taskId)}`);
+      } catch (e) {
+        console.warn("Poll error:", e.message);
+        continue; // transient; keep trying
+      }
+      const data = d.data || {};
+      const status = data.status || "PENDING";
+      const tracks = data.response?.sunoData || data.response?.data || [];
+      if (tracks.length) upsertTracks(tracks.map((t) => normalizeTrack(t, job)));
+
+      if (ERROR_TEXT[status] || /FAIL|ERROR|EXCEPTION/.test(status)) {
+        job.error = `${ERROR_TEXT[status] || status}${data.errorMessage ? ` — ${data.errorMessage}` : ""}`;
+        jobCard(job); saveJobs();
+        toast(job.error, "err");
+        refreshCredits();
+        return;
+      }
+      if (status !== job.status) {
+        job.status = status;
+        jobCard(job); saveJobs();
+        if (status === "FIRST_SUCCESS") toast("First track is ready to play 🎧", "ok");
+      }
+      if (status === "SUCCESS") {
+        toast("Your songs are ready! 🎉", "ok");
+        refreshCredits();
+        return;
+      }
+    }
+    job.error = "Timed out waiting for the song. It may still appear later — check back soon.";
+    jobCard(job); saveJobs();
+  }
+
+  // ---------- submit ----------
+  $("#form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const instrumental = $("#instrumental").checked;
+    const model = $("#model").value;
+    let body, label;
+
+    if (mode === "simple") {
+      const prompt = $("#description").value.trim();
+      if (!prompt) { toast("Describe the song you want first", "err"); $("#description").focus(); return; }
+      body = { customMode: false, instrumental, model, prompt };
+      label = prompt.length > 60 ? prompt.slice(0, 57) + "…" : prompt;
+    } else {
+      const title = $("#title").value.trim();
+      const style = $("#style").value.trim();
+      const lyrics = $("#lyrics").value.trim();
+      if (!style) { toast("Add a music style (e.g. “indie pop, dreamy”)", "err"); $("#style").focus(); return; }
+      if (!instrumental && !lyrics) { toast("Add lyrics, use ✍️ Write, or switch on Instrumental", "err"); $("#lyrics").focus(); return; }
+      body = { customMode: true, instrumental, model, style, title: title || undefined };
+      if (!instrumental) body.prompt = lyrics;
+      const neg = $("#negativeTags").value.trim();
+      if (neg) body.negativeTags = neg;
+      if (!instrumental && $("#vocalGender").value) body.vocalGender = $("#vocalGender").value;
+      if (sliderState.styleWeight) body.styleWeight = Number($("#styleWeight").value);
+      if (sliderState.weirdness) body.weirdnessConstraint = Number($("#weirdness").value);
+      label = title || style.slice(0, 60);
+    }
+
+    const btn = $("#generateBtn");
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Starting…';
+    try {
+      const d = await api("generate", { method: "POST", body });
+      const taskId = d.data?.taskId;
+      if (!taskId) throw new Error("No task ID returned. Please try again.");
+      const job = { taskId, label, status: "PENDING", title: body.title, style: body.style, model, startedAt: Date.now() };
+      jobs.unshift(job); saveJobs();
+      jobCard(job);
+      toast("Song generation started 🎶", "ok");
+      pollJob(job);
+    } catch (err) {
+      toast(err.message, "err");
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "🎶 Generate song";
+    }
+  });
+
+  // ---------- init ----------
+  setMode("simple");
+  syncKeyUi();
+  renderLibrary();
+  // Resume any in-progress jobs from a previous visit
+  jobs = jobs.filter((j) => !j.error && j.status !== "SUCCESS" && Date.now() - (j.startedAt || 0) < 15 * 60 * 1000);
+  saveJobs();
+  if (getKey()) jobs.forEach((j) => { jobCard(j); pollJob(j); });
+  refreshCredits();
+})();
+</script>
+</body>
+</html>
