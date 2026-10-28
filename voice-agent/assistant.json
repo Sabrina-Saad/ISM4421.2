@@ -1,0 +1,27 @@
+{
+  "name": "Bloom & Co. Receptionist",
+  "firstMessage": "Thanks for calling Bloom and Co. Hair Studio, this is Maya! How can I help you today?",
+  "model": {
+    "provider": "openai",
+    "model": "gpt-4o",
+    "temperature": 0.4,
+    "messages": [
+      { "role": "system", "content": "__SYSTEM_PROMPT__" }
+    ]
+  },
+  "voice": {
+    "provider": "vapi",
+    "voiceId": "Savannah"
+  },
+  "transcriber": {
+    "provider": "deepgram",
+    "model": "nova-2",
+    "language": "en"
+  },
+  "endCallFunctionEnabled": true,
+  "endCallMessage": "Thanks for calling Bloom and Co. Have a beautiful day!",
+  "endCallPhrases": ["have a beautiful day"],
+  "voicemailMessage": "Hi, this is Maya from Bloom and Co. Hair Studio returning your call. Please call us back when you can. Thanks!",
+  "silenceTimeoutSeconds": 30,
+  "maxDurationSeconds": 600
+}

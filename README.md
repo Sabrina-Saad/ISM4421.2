@@ -22,3 +22,6 @@ The key is saved only in that browser's `localStorage` and is sent only to `api.
 
 ## Run locally
 Serve the `public/` folder with any static server, for example `npx serve public`, then open the URL it prints.
+
+## Voice agent
+The `voice-agent/` folder has a separate project: an AI phone receptionist for a made-up hair salon, built on Vapi, with its own phone number. See [`voice-agent/README.md`](voice-agent/README.md) for setup.
